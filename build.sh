@@ -3,6 +3,14 @@
 # Build script untuk Layrd dengan version injection
 # Jalankan di Git Bash atau WSL: ./build.sh
 
+set -e
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
+
+echo "Building frontend..."
+npm --prefix frontend run build
+
 # Pastikan folder output bin ada
 mkdir -p bin
 

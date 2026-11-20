@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -192,6 +194,45 @@ func (a *App) SetupSPA(distPath string) {
 	})
 
 	log.Printf("[SPA] Serving Single Page Application from %s\n", cleanPath)
+}
+
+// SetupSPAFS serves a Single Page Application from an embedded filesystem.
+func (a *App) SetupSPAFS(dist fs.FS) error {
+	indexHTML, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		return fmt.Errorf("read SPA index.html: %w", err)
+	}
+
+	distHTTPFS := http.FS(dist)
+	if assetsFS, err := fs.Sub(dist, "assets"); err == nil {
+		a.Router.StaticFS("/assets", http.FS(assetsFS))
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("open embedded SPA assets: %w", err)
+	}
+
+	a.Router.NoRoute(func(c *gin.Context) {
+		reqPath := c.Request.URL.Path
+
+		if strings.HasPrefix(reqPath, a.Config.APIPrefix) ||
+			strings.HasPrefix(reqPath, a.Config.StorageURL) ||
+			strings.HasPrefix(reqPath, "/ws") {
+			response.NotFound(c, fmt.Sprintf("API endpoint [%s %s] not found", c.Request.Method, reqPath))
+			return
+		}
+
+		filePath := strings.TrimPrefix(path.Clean("/"+reqPath), "/")
+		if filePath != "." && fs.ValidPath(filePath) {
+			if fileInfo, err := fs.Stat(dist, filePath); err == nil && !fileInfo.IsDir() {
+				c.FileFromFS(filePath, distHTTPFS)
+				return
+			}
+		}
+
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+	})
+
+	log.Println("[SPA] Serving Single Page Application embedded in the binary")
+	return nil
 }
 
 // Run starts the HTTP server with graceful shutdown handling

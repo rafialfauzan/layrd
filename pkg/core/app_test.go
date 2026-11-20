@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rafialfauzan/layrd/pkg/config"
@@ -124,7 +125,6 @@ func TestSPAFallbackToIndexHTML(t *testing.T) {
 		APIPrefix:   "/api/v1",
 		StorageURL:  "/storage",
 		SPAEnabled:  true,
-		SPADistPath: tempDir,
 	})
 	app.SetupSPA(tempDir)
 
@@ -150,6 +150,49 @@ func TestSPAFallbackToIndexHTML(t *testing.T) {
 	}
 	if strings.Contains(wAPI.Body.String(), "Vue App Mock") {
 		t.Fatal("API route unexpectedly fell back to index.html")
+	}
+}
+
+func TestEmbeddedSPAServesAssetsAndFallsBackWithoutServingAPIRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	app := NewApp(&config.Config{
+		GinMode:    gin.TestMode,
+		APIPrefix:  "/api/v1",
+		StorageURL: "/storage",
+	})
+	dist := fstest.MapFS{
+		"index.html":       {Data: []byte("<html>embedded app</html>")},
+		"assets/app.js":    {Data: []byte("console.log('embedded')")},
+		"favicon.ico":      {Data: []byte("icon")},
+	}
+	if err := app.SetupSPAFS(dist); err != nil {
+		t.Fatalf("SetupSPAFS() error = %v", err)
+	}
+
+	tests := []struct {
+		path       string
+		wantStatus int
+		wantBody   string
+	}{
+		{path: "/", wantStatus: http.StatusOK, wantBody: "<html>embedded app</html>"},
+		{path: "/sales", wantStatus: http.StatusOK, wantBody: "<html>embedded app</html>"},
+		{path: "/assets/app.js", wantStatus: http.StatusOK, wantBody: "console.log('embedded')"},
+		{path: "/favicon.ico", wantStatus: http.StatusOK, wantBody: "icon"},
+		{path: "/api/v1/missing", wantStatus: http.StatusNotFound, wantBody: `"code":404`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			app.Router.ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d; body: %s", w.Code, tt.wantStatus, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), tt.wantBody) {
+				t.Fatalf("body = %q, want it to contain %q", w.Body.String(), tt.wantBody)
+			}
+		})
 	}
 }
 

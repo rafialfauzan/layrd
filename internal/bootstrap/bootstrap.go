@@ -30,7 +30,9 @@ func initializeApp() (*core.App, error) {
 		}
 	}()
 
-	registerRoutes(app)
+	if err := registerRoutes(app); err != nil {
+		return nil, fmt.Errorf("register routes: %w", err)
+	}
 
 	if err := app.InitDatabases(); err != nil {
 		return nil, fmt.Errorf("initialize databases: %w", err)
