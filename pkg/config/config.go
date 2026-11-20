@@ -38,6 +38,8 @@ type Config struct {
 	RateLimitBurst     int
 	StoragePath        string
 	StorageURL         string
+	SPAEnabled         bool
+	SPADistPath        string
 	Databases          map[string]DatabaseConfig
 }
 
@@ -59,6 +61,8 @@ func LoadConfig() (*Config, error) {
 		RateLimitBurst:     getEnvAsInt("RATE_LIMIT_BURST", 40),
 		StoragePath:        getEnv("STORAGE_PATH", "./storage/uploads"),
 		StorageURL:         getEnv("STORAGE_URL", "/storage"),
+		SPAEnabled:         getEnvAsBool("SPA_ENABLED", false),
+		SPADistPath:        getEnv("SPA_DIST_PATH", "./frontend/dist"),
 		Databases:          make(map[string]DatabaseConfig),
 	}
 	if strings.EqualFold(cfg.AppEnv, "production") &&
@@ -161,6 +165,18 @@ func getEnvAsFloat(key string, defaultVal float64) float64 {
 		return defaultVal
 	}
 	val, err := strconv.ParseFloat(valStr, 64)
+	if err != nil {
+		return defaultVal
+	}
+	return val
+}
+
+func getEnvAsBool(key string, defaultVal bool) bool {
+	valStr := strings.TrimSpace(os.Getenv(key))
+	if valStr == "" {
+		return defaultVal
+	}
+	val, err := strconv.ParseBool(valStr)
 	if err != nil {
 		return defaultVal
 	}

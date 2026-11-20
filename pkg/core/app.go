@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -56,6 +58,11 @@ func NewApp(cfg *config.Config) *App {
 			"env":      cfg.AppEnv,
 			"time":     time.Now().Format(time.RFC3339),
 		})
+	})
+
+	// Default 404 handler for pure API mode
+	router.NoRoute(func(c *gin.Context) {
+		response.NotFound(c, fmt.Sprintf("Resource [%s %s] not found", c.Request.Method, c.Request.URL.Path))
 	})
 
 	apiGroup := router.Group(cfg.APIPrefix)
@@ -130,6 +137,47 @@ func (a *App) SetupWebSocketRoute(path string) {
 		websocket.ServeWebSocket(a.WSHub, c, room)
 	})
 	log.Printf("[Framework] WebSocket endpoint enabled at %s?room=:room\n", path)
+}
+
+// SetupSPA configures the application to serve a Single Page Application (e.g. Vue/React)
+// from the designated dist directory, with client-side HTML5 history fallback.
+func (a *App) SetupSPA(distPath string) {
+	cleanPath := filepath.Clean(distPath)
+	indexPath := filepath.Join(cleanPath, "index.html")
+
+	assetsPath := filepath.Join(cleanPath, "assets")
+	if stat, err := os.Stat(assetsPath); err == nil && stat.IsDir() {
+		a.Router.Static("/assets", assetsPath)
+	}
+
+	a.Router.NoRoute(func(c *gin.Context) {
+		reqPath := c.Request.URL.Path
+
+		// Never fallback API, WebSocket, or Storage paths to index.html
+		if strings.HasPrefix(reqPath, a.Config.APIPrefix) ||
+			strings.HasPrefix(reqPath, a.Config.StorageURL) ||
+			strings.HasPrefix(reqPath, "/ws") {
+			response.NotFound(c, fmt.Sprintf("API endpoint [%s %s] not found", c.Request.Method, reqPath))
+			return
+		}
+
+		// Try serving specific static root files if requested (e.g. favicon.ico, manifest.json)
+		targetFile := filepath.Join(cleanPath, filepath.Clean(reqPath))
+		if stat, err := os.Stat(targetFile); err == nil && !stat.IsDir() {
+			c.File(targetFile)
+			return
+		}
+
+		// Client-side HTML5 History Mode Fallback
+		if _, err := os.Stat(indexPath); err == nil {
+			c.File(indexPath)
+			return
+		}
+
+		response.NotFound(c, "SPA frontend build not found. Run 'npm run build' inside frontend/ directory.")
+	})
+
+	log.Printf("[SPA] Serving Single Page Application from %s\n", cleanPath)
 }
 
 // Run starts the HTTP server with graceful shutdown handling

@@ -27,6 +27,8 @@ git clone github.com/rafialfauzan/layrd
    Termasuk CORS dinamis, JWT Authentication & RBAC role checker, IP/Token Token-Bucket Rate Limiter, Panic Recovery dengan stack tracing aman, dan Unique `X-Request-ID`.
 7. **Graceful Shutdown**  
    Mencegah hilangnya koneksi saat server restart atau deploy dengan menangani sinyal OS `SIGINT` / `SIGTERM` secara tertib.
+8. **Dual Mode: Pure REST API atau Fullstack SPA (`SPA_ENABLED`)**  
+   Bisa difungsikan sebagai backend API murni (default) atau diaktifkan mode SPA untuk melayani langsung frontend Vue dari `frontend/dist` dengan HTML5 history fallback otomatis.
 
 ---
 
@@ -79,6 +81,9 @@ barong-framework/
 │       └── client.go                # Client connection pump & ping/pong
 ├── storage/
 │   └── uploads/                     # Tempat file fisik upload pengguna (avatars, dll)
+├── frontend/                        # Aplikasi Frontend (Vue.js / Vite SPA)
+│   ├── src/
+│   └── dist/                        # Hasil build frontend (otomatis diabaikan oleh git)
 ├── .env.example                     # Template konfigurasi environment variables
 ├── .gitignore                       # Daftar file/folder yang diabaikan oleh Git (bin/, .env, uploads/)
 ├── build.sh                         # Script kompilasi multi-platform (Linux & Windows) dengan version injection

@@ -17,4 +17,9 @@ func registerRoutes(app *core.App) {
 	})
 
 	app.SetupWebSocketRoute("/ws")
+
+	// Enable Single Page Application (SPA) if enabled in configuration
+	if app.Config.SPAEnabled {
+		app.SetupSPA(app.Config.SPADistPath)
+	}
 }
