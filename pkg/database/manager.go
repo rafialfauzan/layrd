@@ -109,6 +109,15 @@ func databaseDialector(dbCfg config.DatabaseConfig, postgresDSN string) (gorm.Di
 	}
 }
 
+// Has checks whether a database connection with the specified name exists
+func (m *DBManager) Has(name string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	_, exists := m.dbs[name]
+	return exists
+}
+
 // Get returns the gorm.DB instance for a specific database name
 func (m *DBManager) Get(name string) (*gorm.DB, error) {
 	m.mu.RLock()

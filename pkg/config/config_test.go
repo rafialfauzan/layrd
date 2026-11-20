@@ -49,3 +49,19 @@ func TestLoadConfigRequiresStrongJWTSecretInProduction(t *testing.T) {
 		t.Fatalf("LoadConfig() with strong secret error = %v", err)
 	}
 }
+
+func TestLoadConfigSecondaryDatabaseIgnoredWhenBlankOrQuoted(t *testing.T) {
+	testCases := []string{"", "   ", `""`, `''`}
+	for _, tc := range testCases {
+		t.Run("val="+tc, func(t *testing.T) {
+			t.Setenv("DB_USER_NAME", tc)
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig() error = %v", err)
+			}
+			if _, exists := cfg.Databases["user"]; exists {
+				t.Errorf("expected secondary database 'user' to be omitted when DB_USER_NAME=%q", tc)
+			}
+		})
+	}
+}

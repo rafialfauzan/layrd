@@ -22,6 +22,7 @@ type DatabaseConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime int // in minutes
+	Optional        bool
 }
 
 type Config struct {
@@ -79,10 +80,13 @@ func LoadConfig() (*Config, error) {
 		MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
 		MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 10),
 		ConnMaxLifetime: getEnvAsInt("DB_CONN_MAX_LIFETIME_MIN", 5),
+		Optional:        false,
 	}
 
 	// 2. Secondary DB (Optional User DB)
-	if userDBName := os.Getenv("DB_USER_NAME"); userDBName != "" {
+	userDBName := strings.TrimSpace(os.Getenv("DB_USER_NAME"))
+	userDBName = strings.Trim(userDBName, `"'`)
+	if userDBName != "" {
 		userDriver := strings.ToLower(strings.TrimSpace(getEnv("DB_USER_DRIVER", defaultDriver)))
 		userDefaultPort := defaultDatabasePort(userDriver)
 		userDefaultName := defaultDatabaseUser(userDriver)
@@ -104,6 +108,7 @@ func LoadConfig() (*Config, error) {
 			MaxOpenConns:    getEnvAsInt("DB_USER_MAX_OPEN_CONNS", 25),
 			MaxIdleConns:    getEnvAsInt("DB_USER_MAX_IDLE_CONNS", 10),
 			ConnMaxLifetime: getEnvAsInt("DB_USER_CONN_MAX_LIFETIME_MIN", 5),
+			Optional:        true,
 		}
 	}
 

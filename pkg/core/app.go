@@ -78,6 +78,10 @@ func (a *App) InitDatabases() error {
 	for name, dbCfg := range a.Config.Databases {
 		_, err := a.DBManager.Connect(dbCfg, isDebug)
 		if err != nil {
+			if dbCfg.Optional {
+				log.Printf("[DBManager] Warning: optional database [%s] connection failed: %v (skipping)\n", name, err)
+				continue
+			}
 			return fmt.Errorf("failed to connect to db [%s]: %w", name, err)
 		}
 	}

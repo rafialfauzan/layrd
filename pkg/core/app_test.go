@@ -56,3 +56,25 @@ func TestRegisterModuleReturnsInitializerError(t *testing.T) {
 		t.Fatalf("RegisterModule() error = %v, want %v", err, wantErr)
 	}
 }
+
+func TestInitDatabasesSkipsOptionalDatabaseOnFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	app := NewApp(&config.Config{
+		GinMode: gin.TestMode,
+		Databases: map[string]config.DatabaseConfig{
+			"optional_fail": {
+				Name:     "optional_fail",
+				Driver:   "unsupported_driver",
+				Optional: true,
+			},
+		},
+	})
+
+	err := app.InitDatabases()
+	if err != nil {
+		t.Fatalf("InitDatabases() should not fail when an optional database fails to connect, got: %v", err)
+	}
+	if app.DBManager.Has("optional_fail") {
+		t.Fatal("DBManager should not register optional_fail when connection fails")
+	}
+}
