@@ -67,12 +67,17 @@ func NewApp(cfg *config.Config) *App {
 
 	apiGroup := router.Group(cfg.APIPrefix)
 
+	var wsHub *websocket.Hub
+	if cfg.WSEnabled {
+		wsHub = websocket.NewHub()
+	}
+
 	return &App{
 		Config:       cfg,
 		Router:       router,
 		APIGroup:     apiGroup,
 		DBManager:    database.NewDBManager(),
-		WSHub:        websocket.NewHub(),
+		WSHub:        wsHub,
 		TokenService: utils.NewTokenService(cfg.JWTSecret, cfg.JWTExpirationHours),
 		modules:      make([]Module, 0),
 	}
@@ -129,6 +134,15 @@ func (a *App) MigrateModules() error {
 
 // SetupWebSocketRoute enables real-time WebSocket connection endpoint
 func (a *App) SetupWebSocketRoute(path string) {
+	if !a.Config.WSEnabled {
+		log.Println("[WebSocket] Feature is disabled by configuration (WS_ENABLED=false)")
+		return
+	}
+
+	if a.WSHub == nil {
+		a.WSHub = websocket.NewHub()
+	}
+
 	a.Router.GET(path, func(c *gin.Context) {
 		room := c.Query("room")
 		if room == "" {

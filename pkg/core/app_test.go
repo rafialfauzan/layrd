@@ -152,3 +152,25 @@ func TestSPAFallbackToIndexHTML(t *testing.T) {
 		t.Fatal("API route unexpectedly fell back to index.html")
 	}
 }
+
+func TestWebSocketCanBeDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	app := NewApp(&config.Config{
+		GinMode:   gin.TestMode,
+		WSEnabled: false,
+		WSPath:    "/ws",
+	})
+	app.SetupWebSocketRoute("/ws")
+
+	if app.WSHub != nil {
+		t.Fatal("WSHub should be nil when WSEnabled is false")
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/ws", nil)
+	app.Router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for disabled /ws route, got %d", w.Code)
+	}
+}

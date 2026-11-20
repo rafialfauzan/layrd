@@ -40,6 +40,8 @@ type Config struct {
 	StorageURL         string
 	SPAEnabled         bool
 	SPADistPath        string
+	WSEnabled          bool
+	WSPath             string
 	Databases          map[string]DatabaseConfig
 }
 
@@ -63,6 +65,8 @@ func LoadConfig() (*Config, error) {
 		StorageURL:         getEnv("STORAGE_URL", "/storage"),
 		SPAEnabled:         getEnvAsBool("SPA_ENABLED", false),
 		SPADistPath:        getEnv("SPA_DIST_PATH", "./frontend/dist"),
+		WSEnabled:          getEnvAsBool("WS_ENABLED", true),
+		WSPath:             getEnv("WS_PATH", "/ws"),
 		Databases:          make(map[string]DatabaseConfig),
 	}
 	if strings.EqualFold(cfg.AppEnv, "production") &&
